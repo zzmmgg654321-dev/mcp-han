@@ -87,10 +87,21 @@ def test_quotes_default_to_curly():
 
 
 def test_quote_style_switch():
+    # 直引号 → 目标风格
     assert R.fix('他说"你好"。', quote_style="corner").text == "他说「你好」。"
-    assert R.fix("他说“你好”。", quote_style="corner").text == "他说「你好」。"
-    assert R.fix("他说「你好」。", quote_style="curly").text == "他说“你好”。"
-    assert R.fix("他说「你好」。", quote_style="keep").text == "他说「你好」。"
+    assert R.fix('他说"你好"。').text == "他说“你好”。"
+    assert R.fix('他说"你好"。', quote_style="keep").text == '他说"你好"。'
+    # 已经是中文引号的不动（默认），也不会被 check 报出来
+    assert R.fix("他说「你好」。").text == "他说「你好」。"
+    assert R.fix("他说“你好”。").text == "他说“你好”。"
+    assert R.check("把「中文校对」做成了工具。") == []
+    # 要整体换风格，点名 quote-switch
+    assert R.fix("他说「你好」。", rules="quote-switch").text == "他说“你好”。"
+    assert (
+        R.fix("他说“你好”。", rules="quote-switch", quote_style="corner").text
+        == "他说「你好」。"
+    )
+    # 纯英文里的引号不动
     assert R.fix('He said "hello" loudly.').text == 'He said "hello" loudly.'
 
 
@@ -111,6 +122,15 @@ def test_fullwidth_alnum_and_latin_case_in_one_pass():
 
 def test_latin_case():
     assert R.fix("用github和javascript写的").text == "用 GitHub 和 JavaScript 写的"
+
+
+def test_latin_case_skips_hyphenated_names():
+    # 连字符/下划线/点连着的不是「独立的词」，不能改：mcp-han / node.js / my-github-fork
+    assert R.fix("mcp-han 这个项目").text == "mcp-han 这个项目"
+    assert R.fix("node.js 和 my-github-fork").text == "node.js 和 my-github-fork"
+    assert R.fix("gpt-4 模型").text == "gpt-4 模型"
+    # 但独立的词照改
+    assert R.fix("看 github 和 api").text == "看 GitHub 和 API"
 
 
 def test_typo():

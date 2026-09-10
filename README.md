@@ -14,7 +14,7 @@
 + 我们用 GitHub 和 DeepSeek API 做了个工具，结果准确率是 95%左右……即使这样，应该也没问题。
 ```
 
-一行接入 · 4 个工具 · 17 条规则 · **零第三方依赖**（只用标准库 + MCP SDK）
+一行接入 · 4 个工具 · 18 条规则 · **零第三方依赖**（只用标准库 + MCP SDK）
 
 ---
 
@@ -132,38 +132,52 @@ uv run pytest           # 43 项测试（含一次真实 stdio 协议往返）
 
 ## 规则清单
 
-<!-- 这张表由 `uv run python -c ...` 从 RULES 导出，改规则请同步 -->
-
-| 规则 id | 检查项 | 级别 | 默认自动修复 |
+<!-- RULES-TABLE:START -->
+| 规则 id | 检查项 | 级别 | 默认 |
 | --- | --- | --- | :---: |
-| `typo` | 常见错别字 / 成语误写（72 条词表） | error | ✅ |
-| `latin-case` | 专有名词大小写（69 条词表） | warn | ✅ |
-| `pangu-space` | 中英文之间空格 | style | ✅ |
-| `punct-halfwidth` | 半角标点 | style | ✅ |
-| `paren-halfwidth` | 半角括号 | style | ✅ |
-| `ellipsis` | 省略号写法 | style | ✅ |
-| `dash` | 破折号写法 | style | ✅ |
-| `quote-style` | 引号风格 | style | ✅ |
-| `fullwidth-alnum` | 全角字母数字 | style | ✅ |
-| `punct-space` | 标点前多余空格 | style | ✅ |
-| `space-after-punct` | 标点后多余空格 | style | ✅ |
-| `bracket-padding` | 括号内多余空格 | style | ✅ |
-| `percent-space` | 百分号前空格 | style | ✅ |
-| `trailing-space` | 行尾空白 | style | ✅ |
-| `dup-punct` | 重复标点（「！！」） | style | 点名才修 |
-| `fullwidth-space` | 全角空格（U+3000） | style | 只报告 |
+| `typo` | 常见错别字 / 成语误写（72 条词表） | error | ✅ 自动修 |
+| `latin-case` | 专有名词大小写（69 条词表） | warn | ✅ 自动修 |
+| `pangu-space` | 中英文之间空格 | style | ✅ 自动修 |
+| `punct-halfwidth` | 半角标点 | style | ✅ 自动修 |
+| `paren-halfwidth` | 半角括号 | style | ✅ 自动修 |
+| `ellipsis` | 省略号写法 | style | ✅ 自动修 |
+| `dash` | 破折号写法 | style | ✅ 自动修 |
+| `quote-style` | 引号风格 | style | ✅ 自动修 |
+| `quote-switch` | 引号风格切换 | style | 点名才跑 |
+| `fullwidth-alnum` | 全角字母数字 | style | ✅ 自动修 |
+| `punct-space` | 标点前多余空格 | style | ✅ 自动修 |
+| `space-after-punct` | 标点后多余空格 | style | ✅ 自动修 |
+| `bracket-padding` | 括号内多余空格 | style | ✅ 自动修 |
+| `percent-space` | 百分号前空格 | style | ✅ 自动修 |
+| `trailing-space` | 行尾空白 | style | ✅ 自动修 |
+| `dup-punct` | 重复标点 | style | 只报告 |
+| `fullwidth-space` | 全角空格 | style | 只报告 |
 | `unpaired-quote` | 引号不配对 | warn | 只报告 |
+<!-- RULES-TABLE:END -->
+
+这张表由 `uv run python scripts/gen_rules_table.py` 从 `RULES` 生成，改规则后跑一次即可同步，
+CI 里会用 `--check` 校验它没跑偏。
 
 **点名与排除**——所有接受 `rules` 参数的工具都支持这两种写法：
 
 ```text
 rules="typo,latin-case"     # 只跑这两条
 rules="-dup-punct"          # 除了它，其余全跑
-rules="dup-punct"           # 平时不自动修的规则，点名后也会被 fix_text 修掉
+rules="dup-punct"           # 平时只报告不自动修的规则，点名后 fix_text 也会改
+rules="quote-switch"        # 默认关闭的规则，点名才跑
 ```
 
-`fix_text` 另外支持 `quote_style`：`curly`（默认，“”）/ `corner`（「」）/ `keep`（不动），
-并且能把已经写好的“ ”整体换成「 」。
+`fix_text` 的 `quote_style` 决定**半角直引号**变成什么：
+
+| quote_style | 直引号 `"…"` 变成 | 已写好的中文引号 |
+| --- | --- | --- |
+| `curly`（默认） | `“…”` | 不动 |
+| `corner` | `「…」` | 不动 |
+| `keep` | 不动 | 不动 |
+
+有意用了直角引号「」的文档不会被默认规则报错——那是一种合法风格。
+要让整个文档统一换风格，点名 `quote-switch`：`fix_text(text, rules="quote-switch", quote_style="corner")`
+就能把全文的 `“…”` 全换成 `「…」`（反向同理）。
 
 ---
 
@@ -176,7 +190,9 @@ rules="dup-punct"           # 平时不自动修的规则，点名后也会被 f
 所以 `fix(fix(x)) == fix(x)`（测试里有这条），而且它不会把 `3.5` 当成句号、不会把 `---`（Markdown 分隔线）当成破折号。
 
 **3. 宁可不报，不要误报。** 只收高置信度的错别字词表；歧义大的专有名词（`ai`、`ui`、`os`、`go`、`node`）故意不收；
-「的/地/得」这类需要语义判断的一律不碰。判断不了的（例如引号不配对）只报告、不自动改。
+词表匹配要求真正的词边界，所以 `mcp-han`、`node.js`、`my-github-fork` 这类带连字符的名字不会被改；
+「的/地/得」这类需要语义判断的一律不碰；有意使用直角引号「」的文档也不会被判成错误。
+判断不了的（例如引号不配对）只报告、不自动改。
 
 ---
 

@@ -28,3 +28,6 @@ jobs:
 
       - name: Run tests
         run: uv run pytest
+
+      - name: Check README rules table is in sync
+        run: uv run python scripts/gen_rules_table.py --check

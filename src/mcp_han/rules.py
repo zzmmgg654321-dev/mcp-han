@@ -45,6 +45,7 @@ class Rule:
     fixable: bool  # 是否能给出自动修复
     auto: bool  # 是否属于「默认自动修复」集合
     detail: str
+    default: bool = True  # 是否属于默认规则集；False = 必须点名才跑
 
 
 RULES: dict[str, Rule] = {
@@ -65,7 +66,11 @@ RULES: dict[str, Rule] = {
         Rule("dash", "破折号写法", "style", True, True,
              "中文破折号是「——」，即两个 U+2014。"),
         Rule("quote-style", "引号风格", "style", True, True,
-             "直引号统一成弯引号，或整体切换成直角引号「」。"),
+             "半角直引号 \" \" 应改成中文弯引号“ ”；用 quote_style 可改成「」。"),
+        Rule("quote-switch", "引号风格切换", "style", True, False,
+             "把已经写成“ ”或「」的引号整体切换成另一种风格。默认不跑，"
+             "避免把有意使用直角引号的文档误报一遍；需要时点名 rules=\"quote-switch\"。",
+             default=False),
         Rule("fullwidth-alnum", "全角字母数字", "style", True, True,
              "从 PDF、微信、邮件里复制来的全角 ＡＢＣ１２３ 应转半角。"),
         Rule("punct-space", "标点前多余空格", "style", True, True,
@@ -211,8 +216,12 @@ def _rule_typo(text: str, masked: str, opts: dict) -> Iterator[Edit]:
 
 
 _LATIN_KEYS = sorted(LATIN_CASE_TERMS, key=len, reverse=True)
+# 前后都不能紧挨着字母数字、下划线、连字符或点：
+# 「mcp-han」「node.js」「my-github-fork」这类名字不该被改，「用github」才该被改
 _LATIN_RE = re.compile(
-    r"(?<![A-Za-z0-9])(" + "|".join(re.escape(k) for k in _LATIN_KEYS) + r")(?![A-Za-z0-9])",
+    r"(?<![A-Za-z0-9_.\-])("
+    + "|".join(re.escape(k) for k in _LATIN_KEYS)
+    + r")(?![A-Za-z0-9_.\-])",
     re.IGNORECASE,
 )
 
@@ -332,7 +341,18 @@ def _rule_quote(text: str, masked: str, opts: dict) -> Iterator[Edit]:
         yield Edit(m.end() - 1, m.end(), close_q, "quote-style",
                    f"中文里的直引号应改为 {close_q}（右引号）")
 
-    # 2) 已经是成对的另一种中文引号 → 切换成目标风格
+
+def _rule_quote_switch(text: str, masked: str, opts: dict) -> Iterator[Edit]:
+    """把已经是中文引号的“ ”或「」整体换成另一种风格。
+
+    单独做成一条默认关闭的规则：文档里有意用直角引号是合法风格，
+    默认去把它们报一遍只会变成噪音。
+    """
+
+    style = str(opts.get("quote_style") or "curly")
+    if style == "keep":
+        return
+    open_q, close_q = _QUOTE_PAIRS.get(style, _QUOTE_PAIRS["curly"])
     for pattern, current in (
         (r"\u201c([^\u201d\n]*)\u201d", "curly"),
         (r"\u300c([^\u300d\n]*)\u300d", "corner"),
@@ -340,10 +360,10 @@ def _rule_quote(text: str, masked: str, opts: dict) -> Iterator[Edit]:
         if current == style:
             continue
         for m in re.finditer(pattern, masked):
-            yield Edit(m.start(), m.start() + 1, open_q, "quote-style",
-                       f"引号风格已切换为「{open_q}」")
-            yield Edit(m.end() - 1, m.end(), close_q, "quote-style",
-                       f"引号风格已切换为「{close_q}」")
+            yield Edit(m.start(), m.start() + 1, open_q, "quote-switch",
+                       f"引号风格切换为 {open_q}（左引号）")
+            yield Edit(m.end() - 1, m.end(), close_q, "quote-switch",
+                       f"引号风格切换为 {close_q}（右引号）")
 
 
 _RE_FULLWIDTH_ALNUM = re.compile(r"[Ａ-Ｚａ-ｚ０-９]+")
@@ -420,6 +440,7 @@ _HANDLERS: dict[str, Callable[[str, str, dict], Iterator[Edit]]] = {
     "ellipsis": _rule_ellipsis,
     "dash": _rule_dash,
     "quote-style": _rule_quote,
+    "quote-switch": _rule_quote_switch,
     "fullwidth-alnum": _rule_fullwidth_alnum,
     "punct-space": _rule_punct_space,
     "space-after-punct": _rule_space_after_punct,
@@ -446,7 +467,7 @@ def _split_spec(spec: Sequence[str] | str | None) -> list[str]:
 def resolve_rules(spec: Sequence[str] | str | None = None) -> list[str]:
     """把 ``"typo,pangu-space"`` / ``"-dup-punct"`` 这类写法解析成规则 id 列表。
 
-    * 空 → 全部规则
+    * 空 → 默认规则集（``default=True`` 的那些）
     * ``-id`` → 从结果里排除
     * 出现未知 id → 抛 ``ValueError``（由调用方转成友好提示）
     """
@@ -459,7 +480,7 @@ def resolve_rules(spec: Sequence[str] | str | None = None) -> list[str]:
         raise ValueError(
             "未知规则 id: " + ", ".join(unknown) + "；可用规则：" + ", ".join(RULES)
         )
-    ids = selected or list(RULES)
+    ids = selected or [rid for rid, rule in RULES.items() if rule.default]
     return [rid for rid in ids if rid not in excluded]
 
 
@@ -650,6 +671,7 @@ def rules_table() -> list[dict]:
             "severity": r.severity,
             "fixable": r.fixable,
             "auto_fix": r.auto,
+            "default": r.default,
             "detail": r.detail,
         }
         for r in RULES.values()

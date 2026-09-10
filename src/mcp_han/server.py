@@ -98,17 +98,18 @@ def _format_count(stats: dict) -> str:
 
 def _format_rules() -> str:
     lines = [
-        f"共 {len(R.RULES)} 条规则。fix_text 默认自动套用标了「自动」的那些；",
-        "想点名某条规则请把它写进 rules 参数（例如 rules=\"dup-punct\"）。",
+        f"共 {len(R.RULES)} 条规则。默认跑「默认」那一列标了 ✓ 的；",
+        "想点名某条规则（例如默认关闭的 quote-switch）写进 rules 参数即可。",
         "",
     ]
     for item in R.rules_table():
-        flags = []
-        flags.append("可修" if item["fixable"] else "只报告")
+        flags = ["可修" if item["fixable"] else "只报告"]
         if item["auto_fix"]:
             flags.append("自动")
+        if not item["default"]:
+            flags.append("点名才跑")
         lines.append(
-            f"  {item['id']:<18} [{item['severity']:<5}] {'/'.join(flags):<10} {item['title']}"
+            f"  {item['id']:<18} [{item['severity']:<5}] {'/'.join(flags):<16} {item['title']}"
         )
         lines.append(f"  {'':<18} {item['detail']}")
     return "\n".join(lines)
@@ -130,7 +131,7 @@ def check_text(text: str, rules: str = "", severity: str = "", limit: int = 30) 
         text: 要检查的文本。Markdown 也行；代码块、行内代码、URL、邮箱、
             HTML 标签和公式会被自动跳过。
         rules: 只跑指定规则，逗号分隔（如 "typo,pangu-space"）；用 "-" 前缀排除
-            （如 "-dup-punct"）；留空表示全部 17 条规则。
+            （如 "-dup-punct"）；留空表示默认规则集（18 条里除 quote-switch 之外的全部）。
         severity: 只看某个级别，逗号分隔，可选 error / warn / style。
         limit: 最多列出多少条问题，默认 30。
     """
