@@ -1,0 +1,65 @@
+[project]
+name = "mcp-han"
+version = "0.1.0"
+description = "让 AI 写的中文自己过一遍校对 —— 中文排版 / 标点 / 错别字 / 平台字数的 MCP 服务，零第三方依赖"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [
+    { name = "zzmmgg654321-dev", email = "zzmmgg654321-dev@users.noreply.github.com" },
+]
+keywords = [
+    "mcp",
+    "model-context-protocol",
+    "chinese",
+    "proofreading",
+    "linter",
+    "typography",
+    "中文",
+    "校对",
+    "排版",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: Chinese (Simplified)",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Text Processing :: Linguistic",
+]
+dependencies = [
+    "mcp>=2.0.0",
+]
+
+[project.scripts]
+mcp-han = "mcp_han.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/zzmmgg654321-dev/mcp-han"
+Repository = "https://github.com/zzmmgg654321-dev/mcp-han"
+Issues = "https://github.com/zzmmgg654321-dev/mcp-han/issues"
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+]
+
+[build-system]
+requires = ["uv_build>=0.12.10,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]

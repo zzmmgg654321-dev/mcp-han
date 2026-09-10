@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "mcp-han": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/zzmmgg654321-dev/mcp-han",
+        "mcp-han"
+      ]
+    }
+  }
+}

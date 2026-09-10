@@ -1,0 +1,8 @@
+# 统一换行符，避免 Windows 上提交出 CRLF 噪音
+* text=auto eol=lf
+
+# 二进制
+*.png binary
+*.jpg binary
+*.gif binary
+*.mp4 binary
