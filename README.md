@@ -2,7 +2,6 @@
 
 > AI 写完中文，让它自己再读一遍。
 
-[![CI](https://github.com/zzmmgg654321-dev/mcp-han/actions/workflows/ci.yml/badge.svg)](https://github.com/zzmmgg654321-dev/mcp-han/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](pyproject.toml)
 [![MCP](https://img.shields.io/badge/MCP-server-6E56CF.svg)](https://modelcontextprotocol.io)
@@ -72,6 +71,8 @@ cd mcp-han
 uv run mcp-han          # 以 stdio 方式启动服务
 uv run pytest           # 43 项测试（含一次真实 stdio 协议往返）
 ```
+
+测试矩阵在 `.github/workflows/ci.yml`：ubuntu / windows / macOS × Python 3.10 / 3.13。
 
 > 还没发到 PyPI，所以上面统一用 `git+https://...` 的形式安装。装成本地命令：
 > `uv tool install --from git+https://github.com/zzmmgg654321-dev/mcp-han mcp-han`
